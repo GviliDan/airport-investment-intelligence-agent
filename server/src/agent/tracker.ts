@@ -38,8 +38,13 @@ export class RunTracker extends BaseCallbackHandler {
     }
   }
 
-  override handleLLMError(): void {
+  /** One short entry per failed model call ("status:QuotaId"), no message text, for diagnosing provider failures from the logs. */
+  readonly failures: string[] = [];
+
+  override handleLLMError(err?: unknown): void {
     this.modelErrors += 1;
+    const e = err as { status?: number; errorDetails?: Array<{ violations?: Array<{ quotaId?: string }> }> } | undefined;
+    this.failures.push(`${e?.status ?? 'n/a'}${(e?.errorDetails ?? []).flatMap((d) => d.violations ?? []).map((v) => `:${v.quotaId}`).join('')}`);
     this.emit?.({ type: 'model_retry' });
   }
 

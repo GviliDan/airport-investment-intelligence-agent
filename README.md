@@ -2,6 +2,8 @@
 
 A chat agent that helps analysts screen US airports for modernization and expansion. You ask in plain language; the agent calls deterministic analytics over public BTS and FAA data and explains the result. Rankings, comparisons and every figure in the tables and charts are computed by code. The language model chooses which analysis to run and writes the explanation; it is instructed to quote tool results rather than calculate, and its prose is checked against them (see Known limitations).
 
+**Live demo:** https://web-production-0e7b38d4.up.railway.app (Railway; the Gemini key is held only by the backend service).
+
 Built for the take-home in [`assignment.md`](assignment.md). The design is described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What it does
@@ -19,7 +21,7 @@ The agent also supports follow-ups ("same for Florida", "double the weight on gr
 
 - **Backend:** Node.js, TypeScript, Express 5, Zod, LangChain (`createAgent`) with Google Gemini (`@langchain/google-genai`). Gemini is an engineering choice (free tier, tool calling); the assignment does not require a particular model.
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Radix primitives, Recharts. Light and dark themes.
-- **Tests:** Vitest (372 server tests, 27 web tests).
+- **Tests:** Vitest (373 server tests, 27 web tests).
 - **Packaging:** Docker Compose (two containers).
 
 ## Prerequisites
@@ -41,7 +43,7 @@ cp .env.example .env      # then set GEMINI_API_KEY
 |---|---|---|
 | `GEMINI_API_KEY` | none | Required for chat. Never sent to the browser. |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary model; must support tool calling. |
-| `GEMINI_FALLBACK_MODEL` | `gemini-3.1-flash-lite` | Tried when the primary fails or is out of quota. Comma-separate for several. |
+| `GEMINI_FALLBACK_MODEL` | none (see `.env.example`) | Tried in order when the primary fails or is out of quota. Comma-separate for several. The deployed instance uses `gemini-3.1-flash-lite-preview,gemini-3-flash-preview,gemini-3.1-flash-lite`. Each model has its own daily budget. |
 | `MODEL_RPM` | `12` | Client-side cap on requests per minute per model, retries included. Set it at or below your key's per-minute limit for that model (the free tier has typically been about 15, but limits vary by account and model). It does not track daily or token quotas; those are enforced by Google and surface as errors. |
 | `PORT` | `3001` | Express port. |
 | `REQUEST_TIMEOUT_MS` | `90000` | Deadline for one user message, including retries and tools. |
@@ -137,7 +139,15 @@ What was run, and what was not:
 - **Passed:** all server and web tests, typecheck, and production builds; the live agent evaluation (77 of 78 checks; the miss is the "Southeast" scenario, see limitations).
 - **Passed in a clean copy outside the repository tree (no reference to earlier code):** `docker compose build` and `up`; both containers healthy; the web page and `/api/meta` (data periods and datasets) returned 200 through the web container; the processed datasets present in the image; the web container has no Gemini variable; an SSE request through the web container delivered progress events as they happened and the API's timeout error event.
 - **Passed outside Docker (local `next start` plus Express):** two real Gemini questions (a Massachusetts ranking and LAX vs Santa Ana) streamed through the Next.js proxy and rendered in a headless browser, in light and dark themes, at desktop and phone widths. Conversational follow-ups were exercised by the live evaluation at the agent level (several scenarios), but were not clicked through in the Next.js UI.
-- **Not verified:** a complete Gemini question, follow-up and rendered result **inside the Docker containers**. When it was attempted the Gemini free-tier daily quota for the primary model was exhausted (HTTP 429) and the fallback model returned 503, so the request timed out. This was a provider condition, not a container fault, but it means that path has not been seen working end to end in Docker.
+- **Passed on Railway (public URL, 2026-11-26):** the New England ranking question, a conversational follow-up in the same session, and a repeat of the question, all through the public web service and its private-network proxy to the backend. Progress events arrived incrementally, each turn called `rank_expansion_opportunities` once, grounding was `verified`, and the payload carried the ranked rows with per-metric contributions, correlation diagnostics and rank stability. Earlier the same day the first attempt failed; see the incident below.
+- **Not re-checked in a production browser:** the rendered tables and charts on the public URL (the browser tool was unavailable). Rendering was verified earlier in a headless browser against a local build and is covered by the web tests.
+
+### Incident: "The AI model is busy" (2026-11-26)
+
+- **Root cause:** the free-tier daily quota of the primary model (`gemini-3.5-flash-lite`, 500 requests per day per project and model, `GenerateRequestsPerDayPerProjectPerModel-FreeTier`) was used up, mostly by development and evaluation runs. The single fallback model was returning 503 ("high demand"), so both failed. The quota resets at midnight Pacific time; after the reset the primary served requests normally.
+- **Application defect found:** the daily-quota detail is in the structured error (`errorDetails`), not the message text, so the app classified the 429 as transient and retried it before failing over. This wasted time and request slots. It is fixed: a daily quota now fails over immediately.
+- **Changes:** the daily quota is detected from the error details (with a regression test using the real error shape); a fallback chain of three models replaces the single fallback; failed model calls are now logged as status and quota id.
+- **Remaining risk:** the free tier can still be exhausted or overloaded at any time. With the primary out of quota, the new chain answered a question in under 4 seconds on the first fallback. A paid key or a higher quota tier is the real remedy for sustained use.
 
 ## Known limitations
 

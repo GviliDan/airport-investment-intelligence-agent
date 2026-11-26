@@ -6,7 +6,14 @@ const PERMANENT = /\b(400|401|403|404)\b|api key|permission|invalid argument|not
 /** A quota that resets in hours (daily free-tier limits): waiting a few seconds cannot help, so it is not retried, only failed over. */
 export function isQuotaExhausted(err: unknown): boolean {
   const text = err instanceof Error ? err.message : String(err);
+  // Gemini reports the quota id ("...PerDay...") only in the structured error details, not in the message text.
+  const details = err instanceof Error ? safeJson((err as { errorDetails?: unknown }).errorDetails) : '';
+  if (/PerDay/i.test(details) && /\b429\b|quota|resource.?exhausted/i.test(`${text} ${details}`)) return true;
   return /per.?day|daily|retry in \d+h|requests per day/i.test(text) && /\b429\b|quota|resource.?exhausted/i.test(text);
+}
+
+function safeJson(v: unknown): string {
+  try { return v === undefined ? '' : JSON.stringify(v); } catch { return ''; }
 }
 
 /** True for failures worth retrying (rate limits, overload, network). Permanent errors such as a bad key are not. */

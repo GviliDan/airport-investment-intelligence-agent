@@ -181,7 +181,7 @@ export class AirportAgent {
     try {
       result = (await this.agent.invoke({ messages: inputMessages }, { signal: o.signal, recursionLimit: this.deps.config.AGENT_MAX_STEPS * 8 + 20, callbacks: [o.tracker], configurable: { toolRun: o.toolRun } })) as { messages: BaseMessage[] };
     } catch (err) {
-      result = this.recover(err, o.signal);
+      result = this.recover(err, o.signal, o.tracker.failures);
     }
     const fresh = result.messages.slice(inputMessages.length);
     const { artifacts } = collectArtifacts(fresh);
@@ -197,11 +197,11 @@ export class AirportAgent {
   }
 
   /** Converts a failed agent run into a typed error, or salvages nothing: failures are never papered over with invented text. */
-  private recover(err: unknown, signal: AbortSignal): never {
+  private recover(err: unknown, signal: AbortSignal, failures: readonly string[] = []): never {
     if (err instanceof AgentError) throw err;
     const name = err instanceof Error ? err.name : '';
     if (signal.aborted || name === 'AbortError' || name === 'TimeoutError') throw new AgentError('timeout', 'The request took too long and was stopped. Please try again, or ask a narrower question.', 504);
-    this.log.warn('agent_error', { name, message: sanitize(err instanceof Error ? err.message : String(err)) });
+    this.log.warn('agent_error', { name, modelFailures: failures, message: sanitize(err instanceof Error ? err.message : String(err)) });
     if (isQuotaExhausted(err)) throw new AgentError('model_unavailable', 'The language model\'s usage quota is used up for now. Please try again later.', 503);
     if (isTransient(err)) throw new AgentError('model_unavailable', 'The language model is temporarily unavailable (rate limit or overload). Please try again shortly.', 503);
     throw new AgentError('internal_error', 'The assistant failed to process this request.', 500);

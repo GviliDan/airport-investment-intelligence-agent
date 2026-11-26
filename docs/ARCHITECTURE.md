@@ -144,7 +144,7 @@ Airport names are resolved by code, name or city. An ambiguous name returns opti
 
 **Model availability.**
 - A per-model sliding-window limiter (12 requests per minute by default) wraps every model request, retries included. It limits request rate only; it does not track daily or token quotas, which Google enforces and which surface as errors.
-- Retries use exponential backoff with jitter for rate-limit, overload and network errors. A daily-quota error is not retried; it moves to the fallback model (`gemini-3.1-flash-lite` by default).
+- Retries use exponential backoff with jitter for rate-limit, overload and network errors. A daily-quota error is not retried; it moves to the next fallback model. The quota is recognised from the structured error details (`quotaId` containing `PerDay`), because Gemini's message text does not say "per day". The deployed fallback chain is `gemini-3.1-flash-lite-preview`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite`; each model has its own daily budget. Failed model calls are logged as status and quota id.
 - A 90 s deadline bounds each message. Failures return typed errors that the UI explains. If both models are down, a message can wait the full 90 s.
 
 **Grounding.** These checks reduce invented figures; they do not eliminate them.
@@ -189,6 +189,6 @@ The figure check only confirms that a number appears somewhere in the tool resul
 
 ## 11. Testing and verification
 
-- **Automated tests (399: 372 server, 27 web).** Analytics, data clients with mocked HTTP, tools and argument policy, the agent with a scripted fake model (retries, fallback, rate limiting, grounding, cancellation, SSE, HTTP contract), and the UI.
+- **Automated tests (400: 373 server, 27 web).** Analytics, data clients with mocked HTTP, tools and argument policy, the agent with a scripted fake model (retries, fallback, rate limiting, grounding, cancellation, SSE, HTTP contract), and the UI.
 - **Live evaluation.** `npm run eval:agent` runs 20 scenarios against the real model and live data (the four assignment questions, follow-ups, ambiguity, unsupported requests, tool failure, weak data, prompt injection). Last run: 77 of 78 checks passed; the miss is the "Southeast" interpretation. Output: `docs/e2e/agent-eval.md`.
-- **Docker.** Images build and start, health checks pass, and `/api/meta` and SSE events work through the web container. A complete Gemini answer inside Docker has not been observed because the provider quota was exhausted when it was attempted (see the README's verification status).
+- **Docker.** Images build and start, health checks pass, and `/api/meta` and SSE events work through the web container. **Railway.** The deployed app (public URL in the README) answered the New England ranking question and a follow-up with real Gemini, with incremental SSE and verified grounding. An earlier failure that day was the primary model's free-tier daily quota being exhausted while the fallback was overloaded; the incident and fix are in the README. Rendered tables and charts were not re-checked in a production browser.

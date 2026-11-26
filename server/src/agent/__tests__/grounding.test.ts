@@ -104,6 +104,16 @@ describe('retry policy', () => {
     expect(isQuotaExhausted(perMinute)).toBe(false);
     expect(isTransient(perMinute)).toBe(true);
   });
+  it('detects a daily quota from the structured error details when the message does not say so (real Gemini shape)', () => {
+    const violation = (quotaId: string) => [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId, quotaValue: '500' }] }];
+    const msg = '[429 Too Many Requests] You exceeded your current quota, please check your plan and billing details.';
+    const daily = Object.assign(new Error(msg), { errorDetails: violation('GenerateRequestsPerDayPerProjectPerModel-FreeTier') });
+    expect(isQuotaExhausted(daily)).toBe(true);
+    expect(isTransient(daily)).toBe(false);
+    const perMinute = Object.assign(new Error(msg), { errorDetails: violation('GenerateRequestsPerMinutePerProjectPerModel-FreeTier') });
+    expect(isQuotaExhausted(perMinute)).toBe(false);
+    expect(isTransient(perMinute)).toBe(true);
+  });
   it('backs off exponentially with jitter inside 50-100% of the base, capped', () => {
     expect(backoffDelay(1, 1000, 20_000, () => 1)).toBe(1000);
     expect(backoffDelay(3, 1000, 20_000, () => 1)).toBe(4000);
