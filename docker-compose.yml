@@ -1,0 +1,27 @@
+# docker compose up --build   ->  UI on http://localhost:3000
+# The Gemini key is read from .env (see .env.example) and is given to the backend only; the web container never sees it.
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-3.1-flash-lite}
+      MODEL_RPM: ${MODEL_RPM:-12}
+      USE_LIVE_TRAFFIC: ${USE_LIVE_TRAFFIC:-true}
+    restart: unless-stopped
+    # No published port: only the web container reaches the API, through the Compose network.
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        BACKEND_URL: http://server:3001
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

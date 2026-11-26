@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-11-25T15:13:41.098Z",
+  "alignedMonths": [
+    "2026-06",
+    "2026-07",
+    "2026-08"
+  ],
+  "description": "Processed, committed datasets. Raw BTS downloads are never committed; rebuild with npm run data:download and npm run data:build.",
+  "datasets": {
+    "traffic-monthly": {
+      "source": "BTS T-100 Segment Summary By Origin Airport (data.bts.gov r495-tyji, Socrata API)",
+      "period": {
+        "start": "2023-09",
+        "end": "2026-08"
+      },
+      "rows": 32693,
+      "airports": 1622,
+      "note": "All carriers, scheduled and non-scheduled, passengers and cargo; airports with no activity in a month have no row."
+    },
+    "route-segments": {
+      "source": "BTS T-100 Segment (All Carriers) via TranStats download form",
+      "period": {
+        "start": "2026-06",
+        "end": "2026-08"
+      },
+      "rows": 63132,
+      "buildStats": {
+        "2026-06": {
+          "rowsRead": 47620,
+          "rowsKept": 47305,
+          "rowsInactive": 315,
+          "rowsInvalid": 0,
+          "rowsOutsideMonth": 0,
+          "distanceConflicts": 0
+        },
+        "2026-07": {
+          "rowsRead": 48409,
+          "rowsKept": 48090,
+          "rowsInactive": 319,
+          "rowsInvalid": 0,
+          "rowsOutsideMonth": 0,
+          "distanceConflicts": 0
+        },
+        "2026-08": {
+          "rowsRead": 48649,
+          "rowsKept": 48617,
+          "rowsInactive": 32,
+          "rowsInvalid": 0,
+          "rowsOutsideMonth": 0,
+          "distanceConflicts": 0
+        }
+      },
+      "note": "Summed over carriers and aircraft type per month/origin/destination/service class. Inactive zero-activity rows dropped."
+    },
+    "ontime-airport-month": {
+      "source": "BTS Reporting Carrier On-Time Performance via TranStats download form",
+      "period": {
+        "start": "2026-06",
+        "end": "2026-08"
+      },
+      "rows": 1055,
+      "airports": 353,
+      "buildStats": {
+        "2026-06": {
+          "rowsRead": 607577,
+          "rowsOutsideMonth": 0,
+          "rowsInvalid": 0
+        },
+        "2026-07": {
+          "rowsRead": 631970,
+          "rowsOutsideMonth": 0,
+          "rowsInvalid": 0
+        },
+        "2026-08": {
+          "rowsRead": 608389,
+          "rowsOutsideMonth": 0,
+          "rowsInvalid": 0
+        }
+      },
+      "note": "Only carriers with at least 1% of US domestic scheduled passenger revenue report; cargo, small carriers and non-reporting operators are absent."
+    },
+    "airports": {
+      "source": "FAA Aviation Facilities (NTAD ArcGIS) joined to BTS identities",
+      "file": "airports.json"
+    }
+  },
+  "files": {
+    "airports.json": {
+      "bytes": 988619,
+      "sha256": "8481a74b2ca45d9589a3362577339b76b92a93c636e55263cafc510605dfb558"
+    },
+    "traffic-monthly.csv.gz": {
+      "bytes": 601970,
+      "sha256": "c32126ef895cd8d974473d570df484c6ff2ef453f61ed2da37d6521863383826"
+    },
+    "route-segments.csv.gz": {
+      "bytes": 858651,
+      "sha256": "66a8dd6532403b6b8681342d2480e3a65693dff0183384ed447f7b32fe9fe198"
+    },
+    "ontime-airport-month.json.gz": {
+      "bytes": 159645,
+      "sha256": "b723783e750896735a6d16af72ab76d3cf9d04a25857070455546b11fcd165fa"
+    }
+  }
+}

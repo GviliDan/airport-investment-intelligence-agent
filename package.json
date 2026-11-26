@@ -1,0 +1,27 @@
+{
+  "name": "airport-investment-agent",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": "^22.22.2 || >=24.15.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w server && npm run build -w web",
+    "start": "npm run start -w server",
+    "test": "npm run test -w server && npm run test -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "data:download": "npm run data:download -w server --",
+    "data:build": "npm run data:build -w server --",
+    "data:verify": "npm run data:verify -w server --",
+    "eval:agent": "npm run eval:agent -w server --",
+    "check:models": "npm run check:models -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  }
+}
